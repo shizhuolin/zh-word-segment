@@ -5,8 +5,8 @@ vocab_min_count=5
 word2vec_dim=64
 trainfile="./pku_training_bilstmcrf.utf8"
 modelcheckpointpath='./checkpoint/'
-hidden_size=192
-batch_size=128
+hidden_size=128
+batch_size=256
 testfile="pku_test_liblstmcrf_segmentation.utf8"
 
 rm -fr $wordvecfilename $trainfile $testfile

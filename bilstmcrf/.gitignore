@@ -1,2 +1,3 @@
-./checkpoint
-./tmp
+./checkpoint/
+./tmp/
+./pku_test_liblstmcrf_segmentation.utf8
