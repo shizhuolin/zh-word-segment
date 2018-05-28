@@ -181,6 +181,51 @@ def kx(yset, feature, x, ms, alpha, beta, logz):
       v += xyiiproba(yset, ms, alpha, beta, s0, '$', len(x), logz)
   return v
 
+def create_kxcache(yset, features, data_x):
+  kxtable = []
+  for k in range(len(features)):
+    feature = features[k]
+    kx = []
+    for xnum, (x, _) in enumerate(data_x):
+      xs0s1i = []
+      for s1 in yset:
+        if fkyyxi(feature, '^', s1, x, 0) > 0.5:
+          xs0s1i.append( ('^', s1, 0) )
+      for i in range(1, len(x)):
+        for s0 in yset:
+          for s1 in yset:
+            if fkyyxi(feature, s0, s1, x, i) > 0.5:
+              xs0s1i.append( (s0, s1, i) )
+      for s0 in yset:
+        if fkyyxi(feature, s0, '$', x, len(x)) > 0.5:
+          xs0s1i.append( (s0, '$', len(x)) )
+      if xs0s1i:
+        kx.append( (xnum, xs0s1i) )
+    kxtable.append( kx )
+  return kxtable
+
+kxtablecache = None
+def model_grads1(yset, features, weights, data_x):
+  return np.asarray( crfext.model_grads1(yset, features, list(weights), data_x) )
+  K = len(weights)
+  grads = np.zeros( K )
+  malphabetaz = []
+  for x, p in data_x:
+    ms = xmatrices(yset, features, weights, x)
+    alpha = xalphas(ms)
+    beta = xbetas(ms)
+    logz1 = misc.logsumexp( alpha[-1] )
+    logz2 = misc.logsumexp( beta[0] )
+    assert np.allclose(logz1, logz2)
+    malphabetaz.append( (x, p, ms, alpha, beta, logz1) )
+  global kxtablecache
+  if not kxtablecache: kxtablecache = create_kxcache(yset, features, data_x)
+  for k in range(K):
+    for xnum, xs0s1i in kxtablecache[k]:
+      _, proba, ms, alpha, beta, logz = malphabetaz[xnum]
+      grads[k] += proba * np.sum( [ xyiiproba(yset, ms, alpha, beta, s0, s1, i, logz) for s0, s1, i in xs0s1i ] )
+  return grads
+
 def model_grads(yset, features, weights, data_x):
   return np.asarray( crfext.model_grads(yset, features, list(weights), data_x) )
   K = len(weights)
@@ -205,7 +250,7 @@ def optfun(weights, yset, features, all_xy_features_values, data_x, data_xy, sig
     val1 = model_values(weights, yset, features, data_x)
     val2 = np.dot( weights, all_xy_features_values )
     l2 = 1. / (2 * np.square(sigma)) * np.dot(weights, weights)
-    neglikehold = val1 - val2 + l2
+    neglikehold = val1 - val2# + l2
     print('nlh=', neglikehold, end='', flush=True)
     print( ' time:%fs ' % (time.time() - _starTime), end='', flush=True)
     return neglikehold
@@ -213,9 +258,9 @@ def optfun(weights, yset, features, all_xy_features_values, data_x, data_xy, sig
 def gradsfun(weights, yset, features, all_xy_features_values, data_x, data_xy, sigma):
     _starTime = time.time()
     print( 'grads:', end='', flush=True)
-    grads = model_grads(yset, features, weights,  data_x)
+    grads = model_grads1(yset, features, weights,  data_x)
     grads = grads - all_xy_features_values
-    grads = grads + weights / np.square(sigma)
+    grads = grads# + weights / np.square(sigma)
     print('norm=', np.linalg.norm(grads) , end=' ', flush=True)
     print(' %fs' % (time.time() - _starTime), flush=True)
     return grads
@@ -230,7 +275,7 @@ featuremincout_ = 1
 
 _starTime = time.time()
 print( 'load data ... ', end='', flush=True)
-sequences_ = getTextSequences(sys.argv[1])[:200]
+sequences_ = getTextSequences(sys.argv[1])
 print( 'sequences total:%d time:%fs' % (len(sequences_),time.time() - _starTime), flush=True)
 
 _starTime = time.time()
@@ -248,25 +293,25 @@ print( 'calculate all xy feature values on all data xy ... ', end='', flush=True
 all_xy_features_values_ = np.asarray( stat_all_xy_features_values(features_, data_xy_) )
 print( 'time: %fs' % (time.time() - _starTime), flush=True)
 
-def gradcheck(k):
+def gradcheck(weights, k):
   #fvalue = optfun(weights_, yset_, features_, all_xy_features_values_, data_x_, data_xy_, sigma_)
-  grads = gradsfun(weights_, yset_, features_, all_xy_features_values_, data_x_, data_xy_, sigma_)
+  grads = gradsfun(weights, yset_, features_, all_xy_features_values_, data_x_, data_xy_, sigma_)
   epsilon=1e-6
-  weights_[k] -= epsilon
-  fvalue1 = optfun(weights_, yset_, features_, all_xy_features_values_, data_x_, data_xy_, sigma_)
-  weights_[k] += 2*epsilon
-  fvalue2 = optfun(weights_, yset_, features_, all_xy_features_values_, data_x_, data_xy_, sigma_)
+  weights[k] -= epsilon
+  fvalue1 = optfun(weights, yset_, features_, all_xy_features_values_, data_x_, data_xy_, sigma_)
+  weights[k] += 2*epsilon
+  fvalue2 = optfun(weights, yset_, features_, all_xy_features_values_, data_x_, data_xy_, sigma_)
   numericgrad = (fvalue2 - fvalue1) / (2*epsilon)
   print('\n', k, numericgrad, grads[k])
 
-[ gradcheck(k) for k in range( min(weights_.shape[0], 10) ) ]
+# [ gradcheck(weights_, k) for k in range( min(weights_.shape[0], 3) ) ]
 
 def callback(xk):
   with open(sys.argv[2], 'wb') as f:
     pickle.dump( (yset_, features_, xk) , f)
 
-# xf,_,_ = fmin_l_bfgs_b(func=optfun, x0=weights_, fprime=gradsfun, args=(yset_, features_, all_xy_features_values_, data_x_, data_xy_, sigma_), callback=callback, disp=0)
-# print( ' save features and weights' , flush=True )
-# callback(xf)
+xf,_,_ = fmin_l_bfgs_b(func=optfun, x0=weights_, fprime=gradsfun, args=(yset_, features_, all_xy_features_values_, data_x_, data_xy_, sigma_), callback=callback, disp=0)
+print( ' save features and weights' , flush=True )
+callback(xf)
 
 print( 'execute time: %fs' % (time.time() - _starTime_) )
