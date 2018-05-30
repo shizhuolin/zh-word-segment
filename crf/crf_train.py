@@ -271,7 +271,7 @@ assert len(sys.argv) == 3
 
 _starTime_ = time.time()
 sigma_ = 10.
-featuremincout_ = 1
+featuremincout_ = 3
 
 _starTime = time.time()
 print( 'load data ... ', end='', flush=True)

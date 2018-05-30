@@ -3,7 +3,6 @@ import sys
 import tensorflow as tf
 from model import *
 
-
 assert len(sys.argv) == 6
 
 word2vec=sys.argv[1]
@@ -28,6 +27,7 @@ model = BI_LSTM_CRF(sess=sess,
                     ntags=len(label_dictionary_))
 
 ckpt = tf.train.get_checkpoint_state( modelsavepath ) 
+
 model.restore(  ckpt.model_checkpoint_path )
 
 def viterbi(sent):
@@ -36,6 +36,8 @@ def viterbi(sent):
   if sent[-1]=='\n':
     end_char = '\n'
     sent = sent[:-1]
+  if not sent:
+    return sent, [], end_char
   sentence = [[char_dictionary_.get(w, 0) for w in sent ]]
   labels = model.test( sentence, label_transition_proba_ )
   labels = [ label_reverse_dictionary_[i] for i in labels ]

@@ -60,19 +60,25 @@ def viterbi(observation):
     return q[1:]
 
 for sent in test:
-    sequence = viterbi( list(sent) )
-    segment = []
-    for char, tag in zip(sent, sequence):
-        if tag == 'B':
-            segment.append(char)
-        elif tag == 'M':
-            segment[-1] += char
-        elif tag == 'E':
-            segment[-1] += char
-        elif tag == 'S':
-            segment.append(char)
-        else:
-            raise Exception()
-    print('  '.join(segment), sep='', end='')
-    #break
+  sequence = viterbi( list(sent) )
+  segment = []
+  for char, tag in zip(sent, sequence):          
+    if tag == 'B':
+      segment.append(char)
+    elif tag == 'M':
+      if segment:
+        segment[-1] += char
+      else:
+        segment =  [char]
+    elif tag == 'E':
+      if segment:
+        segment[-1] += char
+      else:
+        segment =  [char]
+    elif tag == 'S':
+      segment.append(char)
+    else:
+      raise Exception()
+  print('  '.join(segment), sep='', end='')
+  #break
     

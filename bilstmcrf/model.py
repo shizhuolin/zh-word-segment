@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, sys, time
+import os
 import collections
 import gensim
 import numpy as np
@@ -74,24 +74,28 @@ def build_dataset(word2vecfname, sequences):
     
   char_reverse_dictionary = dict(zip(char_dictionary.values(), char_dictionary.keys()))
   label_reverse_dictionary = dict(zip(label_dictionary.values(), label_dictionary.keys()))
-  return char_vector, char_dictionary,char_reverse_dictionary,label_dictionary,label_reverse_dictionary,label_transition_proba,data
+  return char_vector, char_dictionary, char_reverse_dictionary,label_dictionary,label_reverse_dictionary,label_transition_proba,data
 
 class BI_LSTM_CRF:
   
   def __init__(self, sess, dtype, char2vector, transition_tmatrix, hidden_size, ntags):
+    
     self.sess = sess
+    self.global_step = tf.Variable(0, trainable=False)
     self.sentence_inputs = tf.placeholder(tf.int32, shape=[None, None], name="words")
     self.sentence_labels = tf.placeholder(tf.int32, shape=[None, None], name="labels")
-    self.sentence_lengths = tf.placeholder(tf.int32, shape=[None])
-    self.embeddings = tf.constant(char2vector, dtype=dtype, name="embeddings")
-    self.transition_tmatrix = tf.constant(transition_tmatrix, dtype=dtype, name="transition_matrix")
+    self.sentence_lengths = tf.placeholder(tf.int32, shape=[None,])
+    self.embeddings = tf.Variable(char2vector, dtype=dtype, name="embeddings", trainable=False)
+    self.transition_tmatrix = tf.Variable(transition_tmatrix, dtype=dtype, name="transition_matrix", trainable=False)
+    
     self.char_embeddings = tf.nn.embedding_lookup(self.embeddings, self.sentence_inputs)
     
     def cell():
-      return tf.contrib.rnn.LSTMCell(hidden_size, state_is_tuple=True)
+      return tf.contrib.rnn.GRUCell(hidden_size)
+      #return tf.contrib.rnn.LSTMCell(hidden_size, state_is_tuple=True)
     
-    cell_fw = tf.contrib.rnn.MultiRNNCell([cell() for _ in range(2)], state_is_tuple=True)
-    cell_bw = tf.contrib.rnn.MultiRNNCell([cell() for _ in range(2)], state_is_tuple=True)
+    cell_fw = tf.contrib.rnn.MultiRNNCell([cell() for _ in range(1)], state_is_tuple=True)
+    cell_bw = tf.contrib.rnn.MultiRNNCell([cell() for _ in range(1)], state_is_tuple=True)
     
     (output_fw, output_bw), ( _, _) = tf.nn.bidirectional_dynamic_rnn(cell_fw,cell_bw,
                                                                       self.char_embeddings,
@@ -120,14 +124,13 @@ class BI_LSTM_CRF:
     self.merged = tf.summary.merge_all()
     self.writer = tf.summary.FileWriter( './tmp/', sess.graph)
     self.saver = tf.train.Saver( tf.global_variables() )
-    self.global_step = tf.Variable(0, trainable=False)
     
   def save(self, savepath):
     self.saver.save(self.sess, savepath, global_step=self.global_step)
     
   def restore(self, restorepath):
     self.saver.restore( self.sess, restorepath )
-        
+    
   def step(self, i, data):
     sentences_x, sentences_y, sentences_w, sentence_lengths = data
     

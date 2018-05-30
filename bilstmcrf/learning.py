@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, sys, time
+import sys, time
 import numpy as np
 import tensorflow as tf
 from model import *
@@ -23,8 +23,6 @@ _starTime = time.time()
 print( 'build dataset ... ', end='', flush=True)
 char2vector_, char_dictionary_, char_reverse_dictionary_, label_dictionary_, label_reverse_dictionary_, label_transition_proba_, data_ = build_dataset(word2vec, sequences_)
 print( 'chartable size:%d time:%fs' % (len(char_dictionary_),time.time() - _starTime), flush=True)
-
-
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth=True
