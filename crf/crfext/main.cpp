@@ -235,13 +235,13 @@ double model_values(const ublas::vector<double>& weights,const YSET_T& yset,cons
     {
         vector<ublas::matrix<double>> ms = xmatrices(yset, features, weights, it->x);
         ublas::matrix<double> alpha = xalphas(ms);
-        ublas::matrix<double> beta = xbetas(ms);
+        //ublas::matrix<double> beta = xbetas(ms);
         ublas::vector<double> alphalastrow = ublas::matrix_row<ublas::matrix<double>>(alpha, alpha.size1()-1);
-        ublas::vector<double> betalastrow = ublas::matrix_row<ublas::matrix<double>>(beta, 0);
+        //ublas::vector<double> betalastrow = ublas::matrix_row<ublas::matrix<double>>(beta, 0);
         double logz1 = logsumexp(alphalastrow);
-        double logz2 = logsumexp(betalastrow);
+        //double logz2 = logsumexp(betalastrow);
         //cout << logz1 << " , " << logz2 << " abs:" << abs(logz1 - logz2) << endl;
-        assert( abs(logz1 - logz2) < machine_epsilon );
+        //assert( abs(logz1 - logz2) < machine_epsilon );
         val += it->proba * logz1;
     }
     return val;

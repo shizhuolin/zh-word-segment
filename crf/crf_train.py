@@ -267,11 +267,14 @@ def gradsfun(weights, yset, features, all_xy_features_values, data_x, data_xy, s
 
 #sys.argv.append('./pku_training_crf.utf8')
 #sys.argv.append('./pku_crf_model.pkl')
-assert len(sys.argv) == 3
+#sys.argv.append('10')
+#sys.argv.append('1')
+
+assert len(sys.argv) == 5
 
 _starTime_ = time.time()
-sigma_ = 10.
-featuremincout_ = 3
+sigma_ = float(sys.argv[3])
+featuremincout_ = int(sys.argv[4])
 
 _starTime = time.time()
 print( 'load data ... ', end='', flush=True)

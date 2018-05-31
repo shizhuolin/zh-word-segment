@@ -1,3 +1,4 @@
 ./crf_model.pkl
 ./pku_crf_model.pkl
 ./pku_training_crf.utf8
+./crf_train_*
